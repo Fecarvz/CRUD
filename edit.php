@@ -1,39 +1,79 @@
 <?php
-require_once "pdo.php";
-session_start();
-if ( isset( $_POST['name'] ) && isset( $_POST['email'] ) && isset($_POST['password'] ) ){
-  $sql = "UPDATE users SET name = :name, email = :email, password = :password WHERE user_id = :user_id";
-  $stmt = $pdo->prepare($sql);
-  $stmt->execute(array(
-    ':name' => $_POST['name'],
-    ':email' => $_POST['email'],
-    ':password' => $_POST['password'],
-    ':user_id' => $_POST['user_id']
-  ));
-  $_SESSION['success'] = 'Record updated';
-  header( 'Location: index.php' ) ;
-  return;
-}
-$stmt = $pdo->prepare("SELECT * FROM users WHERE user_id = :xyz");
-$stmt->execute(array(":xyz" => $_GET['user_id']));
-$row = $stmt->fetch(PDO::FETCH_ASSOC);
-if ( $row === false ) {
-  $_SESSION['error'] = 'Bad value for user_id';
-  header( 'Location: index.php' ) ;
-  return;
-}
-$n = htmlentities($row['name']);
-$e = htmlentities($row['email']);
-$p = htmlentities($row['password']);
-$user_id = $row['user_id'];
+  session_start();
+  require_once "pdo.php";
+  if(!isset($_SESSION['account'])){
+    die('ACCESS DENIED');
+  }
+  if ( isset($_POST['cancel']) ) {
+    header('Location: index.php');
+    return;
+  }
+  if ( isset($_POST['first_name']) && isset($_POST['last_name']) && isset($_POST['email']) && isset($_POST['headline']) && isset($_POST['summary']) ) {
+    if ( strlen($_POST['first_name']) < 1 || strlen($_POST['last_name']) < 1 || strlen($_POST['email']) < 1 || strlen($_POST['headline']) < 1 || strlen($_POST['summary']) < 1 ) {
+      $_SESSION['error'] = "All fields are required";
+      header('Location: edit.php?profile_id='.$_POST['profile_id']);
+      return;
+    }elseif ( strpos($_POST['email'], '@') === false ) {
+      $_SESSION['error'] = "Email address must contain @";
+      header('Location: edit.php?profile_id='.$_POST['profile_id']);
+      return;
+    }else{
+      $sql = "UPDATE profile SET first_name = :first_name, last_name = :last_name, email = :email, headline = :headline, summary = :summary WHERE profile_id = :profile_id";
+      $stmt = $pdo->prepare($sql);
+      $stmt->execute(array(
+        ':first_name' => $_POST['first_name'],
+        ':last_name' => $_POST['last_name'],
+        ':email' => $_POST['email'],
+        ':headline' => $_POST['headline'],
+        ':summary' => $_POST['summary'],
+        ':profile_id' => $_POST['profile_id']
+      ));
+      $_SESSION['success'] = "Profile updated";
+      header('Location: index.php');
+      return;
+    }
+  }
 
+  $stmt = $pdo->prepare("SELECT * FROM profile WHERE profile_id = :profile_id");
+  $stmt->execute(array(
+    ':profile_id' => $_GET['profile_id']
+  ));
+  $row = $stmt->fetch(PDO::FETCH_ASSOC);
+  if($row === false){
+    $_SESSION['error'] = "Bad value for profile_id";
+    header('Location: index.php');
+    return;
+  }
+  $f = htmlentities($row['first_name']);
+  $l = htmlentities($row['last_name']);
+  $e = htmlentities($row['email']);
+  $h = htmlentities($row['headline']);
+  $s = htmlentities($row['summary']);
+  $profile_id = $row['profile_id'];
 ?>
-<p>Edit User</p>
-<form method="post">
-<p>Name:<input type="text" name="name" size="40" value="<?= $n ?>"></p>
-<p>Email:<input type="text" name="email" value="<?= $e?>"></p>
-<p>Password:<input type="text" name="password" value="<?= $p ?>"></p>
-<input type="hidden" name="user_id" value="<?= $user_id ?>">
-<p><input type="submit" value="Update"/>
-<a href="index.php">Cancel</a></p>
-</form>
+<html>
+<head>
+  <title>87f9384a</title>
+</head>
+<body>
+  <h1>Editing Profile for UMSI</h1>
+  <?php
+  if ( isset( $_SESSION["error"] ) ) {
+    echo('<p style="color: red;">'.$_SESSION['error']."</p>\n");
+    unset($_SESSION["error"]);
+  }
+?>
+  <form method="post">
+    <p>First Name:<input type="text" name="first_name" size="60" value="<?php echo $f ?>"></p>
+    <p>Last Name:<input type="text" name="last_name" size="60" value="<?php echo $l ?>"></p>
+    <p>Email:<input type="text" name="email" size="60" value="<?php echo $e ?>"></p>
+    <p>Headline: <br/><input type="text" name="headline" size="60" value="<?php echo $h ?>"></p>
+    <p>Summary: <br/>
+    <textarea name="summary" rows="8" cols="80"><?php echo $s ?></textarea>
+    </p>
+    <input type="hidden" name="profile_id" value="<?php echo $profile_id ?>">
+    <p><input type="submit" name='save' value="Save"/><input type="submit" name='cancel'value="cancel"/></p>
+  </form>
+</body>
+</html>
+
